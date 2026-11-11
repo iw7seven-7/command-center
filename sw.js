@@ -1,6 +1,6 @@
 /* Command Center laptop app: works offline after the first open. */
-const VER="cc-app-1.0.0";
-const SHELL=["./","index.html","app.js","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png"];
+const VER="cc-app-1.1.0";
+const SHELL=["./","index.html","app.js","manifest.webmanifest","icon-192.png","icon-512.png","maskable-512.png"];
 const CDN=["https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(VER).then(async c=>{await c.addAll(SHELL);for(const u of CDN){try{await c.add(new Request(u,{mode:"no-cors"}))}catch(err){}}}));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VER).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

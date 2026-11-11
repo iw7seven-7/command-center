@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0c121c"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png"><script>window.APP=true</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="en"><head><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0c121c"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><script>window.APP=true</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Command Center</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -3610,8 +3610,12 @@ function orbit3d(o){
       if(pts.size===2&&pinch){p.x=e.clientX;p.y=e.clientY;const [a,b]=[...pts.values()],k=pinch.d/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y));
         if(walk){camera.fov=Math.max(30,Math.min(80,pinch.fov*k));camera.updateProjectionMatrix()}else R=Math.max(minR,Math.min(maxR,pinch.R*k));return}
       const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;if(down)down.far=Math.max(down.far,Math.hypot(e.clientX-down.x,e.clientY-down.y));if(cineF||frozen)return;
-      if(walk){yaw-=dx*.0075;pitch=Math.max(-1.2,Math.min(1.0,pitch-dy*.006))}else{th-=dx*.0105;ph=Math.max(phMin,Math.min(phMax,ph+dy*.008))}idle=0});
-    let clickTap=false;const up=e=>{const wasTap=down&&pts.size===1&&down.far<8&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<8&&performance.now()-down.t<350;pts.delete(e.pointerId);if(pts.size<2)pinch=null;down=null;clickTap=false;if(wasTap){if(frozen&&!cineF){clickTap=true;return}try{tap(e)}catch(err){console.warn(err)}}};
+      if(walk){const C=window.APPCFG||{},S=C.sens||1,iv=C.invert?-1:1;yaw-=dx*.0075*S;pitch=Math.max(-1.2,Math.min(1.0,pitch-dy*.006*S*iv))}else{th-=dx*.0105;ph=Math.max(phMin,Math.min(phMax,ph+dy*.008))}idle=0});
+    let clickTap=false;const up=e=>{const locked=document.pointerLockElement===el;const wasTap=down&&pts.size===1&&(locked||(down.far<8&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<8))&&performance.now()-down.t<(locked?600:350);pts.delete(e.pointerId);if(pts.size<2)pinch=null;down=null;clickTap=false;
+      if(wasTap&&walk&&window.appWantLock&&e.pointerType==="mouse"&&!locked&&!frozen&&!cineF&&appWantLock()){try{el.requestPointerLock()}catch(_){}return}
+      if(wasTap&&locked){const rc=el.getBoundingClientRect();e={clientX:rc.left+rc.width/2,clientY:rc.top+rc.height/2,pointerType:"mouse"};try{tap(e)}catch(err){console.warn(err)}if(window.appAfterTap)appAfterTap(el);return}
+      if(wasTap){if(frozen&&!cineF){clickTap=true;return}try{tap(e)}catch(err){console.warn(err)}}};
+    if(walk&&window.APP)document.addEventListener("mousemove",e=>{if(document.pointerLockElement!==el||cineF||frozen)return;const C=window.APPCFG||{},S=C.sens||1,iv=C.invert?-1:1;yaw-=e.movementX*.0024*S;pitch=Math.max(-1.25,Math.min(1.05,pitch-e.movementY*.0022*S*iv));idle=0});
     el.addEventListener("click",e=>{if(!clickTap)return;clickTap=false;try{tap(e)}catch(err){console.warn(err)}});
     el.addEventListener("pointerup",up);el.addEventListener("pointercancel",e=>{pts.delete(e.pointerId);pinch=null;down=null});el.addEventListener("lostpointercapture",e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null});
     el.addEventListener("wheel",e=>{e.preventDefault();if(walk){const f=V3(Math.sin(yaw),0,Math.cos(yaw));moveBy(f.x*-Math.sign(e.deltaY)*.25,f.z*-Math.sign(e.deltaY)*.25)}else R=Math.max(minR,Math.min(maxR,R*(1+Math.sign(e.deltaY)*.08)))},{passive:false});
@@ -3656,14 +3660,14 @@ function orbit3d(o){
     if(o.spin&&!reduce&&!focused&&!anim&&idle>240&&!pts.size)th+=o.spin;
     if(anim){const k=Math.min(1,(performance.now()-anim.s)/750),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2,A=anim.f,B=anim.t,L=(a,b)=>a+(b-a)*e;
       target.set(L(A.x,B.x),L(A.y,B.y),L(A.z,B.z));R=L(A.R,B.R);th=L(A.th,B.th);ph=L(A.ph,B.ph);if(k>=1)anim=null}
-    const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;
+    const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;if(window.appFrame)appFrame(renderer,camera,walk,o,keyL,dt);
     if(cineF&&!cineLong&&cineT>8){cineF=null}
     if(cineF){cineT+=dt;let c=null;try{c=cineF(cineT,dt)}catch(err){console.warn(err);cineF=null}if(c&&c.end){cineF=null;if(walk){pos=V3(...c.pos);yaw=c.yaw;pitch=c.pitch;goal=null}}else if(c){camera.position.set(...c.pos);camera.lookAt(...c.look)}}
     if(cineF){}
     else if(walk&&pos){const f=V3(Math.sin(yaw),0,Math.cos(yaw)),rt=V3(-Math.cos(yaw),0,Math.sin(yaw)),K=o._keys||{};
       let mx=-joy.y,my=joy.x;if(K.w||K.arrowup)mx+=1;if(K.s||K.arrowdown)mx-=1;if(K.a||K.arrowleft)my-=1;if(K.d||K.arrowright)my+=1;
       if(frozen){mx=0;my=0}
-      if(mx||my){goal=null;const sp=2.6*dt;moveBy((f.x*mx+rt.x*my)*sp,(f.z*mx+rt.z*my)*sp)}
+      if(mx||my){goal=null;const sp=2.6*dt*(window.appSpeed?appSpeed(K):1);moveBy((f.x*mx+rt.x*my)*sp,(f.z*mx+rt.z*my)*sp)}
       else if(goal){const dx=goal.x-pos.x,dz=goal.z-pos.z,l=Math.hypot(dx,dz);if(l<.08)goal=null;else{const sp=Math.min(l,2.6*dt);const bx=pos.x,bz=pos.z;moveBy(dx/l*sp,dz/l*sp);if(Math.hypot(pos.x-bx,pos.z-bz)<sp*.2)goal=null;
         const want=Math.atan2(dx,dz);let d=want-yaw;d=Math.atan2(Math.sin(d),Math.cos(d));yaw+=d*Math.min(1,dt*4)}}
       camera.position.set(pos.x,pos.y,pos.z);camera.lookAt(pos.x+Math.sin(yaw)*Math.cos(pitch),pos.y+Math.sin(pitch),pos.z+Math.cos(yaw)*Math.cos(pitch))}
@@ -3677,8 +3681,8 @@ function orbit3d(o){
   }
   return{build,show(){if(renderer&&!raf){size();loop()}},labels(m){mode=m;applyLabels()},reset(){if(walk&&start){pos=V3(...start.pos);yaw=start.yaw;pitch=start.pitch;goal=null;camera.fov=o.fov||60;camera.updateProjectionMatrix()}else if(lastR&&lastR.view){focused=null;flyTo({target:lastR.view.target,R:lastR.view.R,th:o.theta||th,ph:o.phi||ph})}},
     focus(k){const v=lastR&&lastR.focus&&lastR.focus(k);if(v){focused=k;flyTo(v)}},focused:()=>focused,
-    cine(fn,long){cineF=fn;cineT=0;cineLong=!!long;goal=null;joy.x=joy.y=0},busy(){return !!cineF},setLight(h,k){if(hemi)hemi.intensity=h;if(keyL)keyL.intensity=k},
-    place(p,y,pi){pos=V3(...p);yaw=y;pitch=pi;goal=null},overlay(){return renderer?{group:extraG,camera}:null},setCineTap(f){cineTapFn=f},freeze(f){frozen=!!f;joy.x=joy.y=0},pose(){return{pos:pos?[pos.x,pos.y,pos.z]:[0,1.6,0],yaw,pitch}}};
+    cine(fn,long){cineF=fn;cineT=0;cineLong=!!long;goal=null;joy.x=joy.y=0;if(window.appUnlock)appUnlock()},busy(){return !!cineF},setLight(h,k){if(hemi)hemi.intensity=h;if(keyL)keyL.intensity=k},
+    place(p,y,pi){pos=V3(...p);yaw=y;pitch=pi;goal=null},overlay(){return renderer?{group:extraG,camera}:null},setCineTap(f){cineTapFn=f},freeze(f){frozen=!!f;joy.x=joy.y=0;if(f&&window.appUnlock)appUnlock()},pose(){return{pos:pos?[pos.x,pos.y,pos.z]:[0,1.6,0],yaw,pitch}}};
 }
 function makeLabel(title,sub,css){
   const c=document.createElement("canvas"),x=c.getContext("2d"),F='600 34px "IBM Plex Sans",system-ui,sans-serif',S='400 24px "IBM Plex Sans",system-ui,sans-serif';
@@ -5463,7 +5467,7 @@ let NOISE=null;
 function sfx(k){
   if(muted)return;
   try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume()}catch(e){return}
-  const t=AC.currentTime,out=AC.createGain();out.gain.value=.9;out.connect(AC.destination);
+  const t=AC.currentTime,out=AC.createGain();out.gain.value=.9*(window.APPCFG&&APPCFG.vol!=null?APPCFG.vol:1);out.connect(AC.destination);
   if(!NOISE){NOISE=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=NOISE.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}
   const env=(g,st,a,peak,dec)=>{g.gain.value=0;g.gain.setValueAtTime(0,t);g.gain.setValueAtTime(0.0001,t+st);g.gain.linearRampToValueAtTime(peak,t+st+a);g.gain.exponentialRampToValueAtTime(.0001,t+st+a+dec)};
   // filtered noise burst: type lowpass/bandpass/highpass at freq f
